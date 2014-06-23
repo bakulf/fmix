@@ -23,6 +23,11 @@
   <script type="text/javascript;version=1.8"
           src="chrome://fmix/content/fmix.js"/>
 
+  <box>
+    <image src="header.png" />
+    <spacer flex="1" />
+  </box>
+
   <vbox id="box-main" flex="1"></vbox>
 
 </window>

@@ -9,7 +9,7 @@ const { classes: Cc, interfaces: Ci, utils: Cu } = Components;
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://fmix/modules/FMix.jsm");
 
-const DEBUG = true;
+const DEBUG = false;
 function debug(msg) {
   if (DEBUG) {
     dump("** FMixUI ** Debug: " + msg + "\n");
