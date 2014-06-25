@@ -157,10 +157,13 @@ const WindowListener = {
     var container = domWindow.gBrowser.tabContainer;
     container.addEventListener("TabOpen", this, false);
     container.addEventListener("TabClose", this, false);
+    container.addEventListener("TabSelect", this, false);
 
     for (let i = 0; i < domWindow.gBrowser.tabContainer.childNodes.length; ++i) {
       FMix.tabOpened(domWindow, domWindow.gBrowser.tabContainer.childNodes[i]);
     }
+
+    FMix.tabSelected();
   },
 
   unloadFromWindow: function(domWindow) {
@@ -190,10 +193,7 @@ const WindowListener = {
     var container = domWindow.gBrowser.tabContainer;
     container.removeEventListener("TabOpen", this);
     container.removeEventListener("TabClose", this);
-
-    for (let i = 0; i < domWindow.gBrowser.tabContainer.childNodes.length; ++i) {
-      FMix.tabOpened(domWindow, domWindow.gBrowser.tabContainer.childNodes[i]);
-    }
+    container.removeEventListener("TabSelect", this);
 
     FMix.windowClosed(domWindow);
   },
@@ -206,6 +206,10 @@ const WindowListener = {
 
       case 'TabClose':
         FMix.tabClosed(event.target.ownerDocument.defaultView, event.target);
+        break;
+
+      case 'TabSelect':
+        FMix.tabSelected();
         break;
     }
   },
@@ -347,7 +351,8 @@ const FMix = {
     var obj = { window: window, tab: tab,
                 tabURL: browser.currentURI.spec,
                 tabTitle: browser.contentWindow.document.title,
-                active: false };
+                active: false,
+                selected: false };
 
     var self = this;
     var listener = {
@@ -394,6 +399,17 @@ const FMix = {
         this._tabMap.splice(i, 1);
         break;
       }
+    }
+
+    this.notifyObservers();
+  },
+
+  tabSelected: function(window, tab) {
+    debug("tab selected");
+
+    for (var i = 0; i < this._tabMap.length; ++i) {
+      var browser = this._tabMap[i].window.gBrowser.getBrowserForTab(this._tabMap[i].tab);
+      this._tabMap[i].selected = (this._tabMap[i].window.gBrowser.selectedBrowser == browser);
     }
 
     this.notifyObservers();

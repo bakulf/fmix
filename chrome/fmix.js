@@ -53,16 +53,14 @@ const FMixUI = {
     }
 
     for (var i = 0; i < tabs.length; ++i) {
-      this.createTab(tabs[i].window, tabs[i].tab,
-                     tabs[i].tabURL, tabs[i].tabTitle,
-                     tabs[i].active, i);
+      this.createTab(tabs[i], i);
     }
   },
 
-  createTab: function(window, tab, tabURL, tabTitle, active, index) {
+  createTab: function(obj, index) {
     debug("createTab");
 
-    var browser = window.gBrowser.getBrowserForTab(tab);
+    var browser = obj.window.gBrowser.getBrowserForTab(obj.tab);
     var utils = browser.contentWindow.QueryInterface(Ci.nsIInterfaceRequestor)
                                      .getInterface(Ci.nsIDOMWindowUtils);
 
@@ -77,7 +75,7 @@ const FMixUI = {
 
     var labelTitle = document.createElement('caption');
     labelTitle.setAttribute('label',
-      this._stringBundle.getFormattedString('tab-title', [(index + 1), tabTitle]));
+      this._stringBundle.getFormattedString('tab-title', [(index + 1), obj.tabTitle]));
     labelTitle.setAttribute('crop', 'end');
     groupBox.appendChild(labelTitle);
 
@@ -91,7 +89,7 @@ const FMixUI = {
 
     var labelURLValue = document.createElement('label');
     labelURLValue.setAttribute('flex', '1');
-    labelURLValue.setAttribute('value', tabURL);
+    labelURLValue.setAttribute('value', obj.tabURL);
     labelURLValue.setAttribute('crop', 'end');
     boxURL.appendChild(labelURLValue);
 
@@ -105,12 +103,29 @@ const FMixUI = {
 
     var labelAudioValue = document.createElement('label');
     labelAudioValue.setAttribute('flex', '1');
-    labelAudioValue.setAttribute('value', active ?
+    labelAudioValue.setAttribute('value', obj.active ?
       this._stringBundle.getString('audio-active') :
       this._stringBundle.getString('audio-inactive'));
-    labelAudioValue.setAttribute('class', active ? 'header' : '');
+    labelAudioValue.setAttribute('class', obj.active ? 'header' : '');
     labelAudioValue.setAttribute('crop', 'end');
     boxAudio.appendChild(labelAudioValue);
+
+    var boxSelected = document.createElement('box');
+    this._box.appendChild(boxSelected);
+
+    var labelSelected = document.createElement('label');
+    labelSelected.setAttribute('crop', 'end');
+    labelSelected.setAttribute('value', this._stringBundle.getString('selected-label'));
+    boxSelected.appendChild(labelSelected);
+
+    var labelSelectedValue = document.createElement('label');
+    labelSelectedValue.setAttribute('flex', '1');
+    labelSelectedValue.setAttribute('value', obj.selected ?
+      this._stringBundle.getString('selected-yes') :
+      this._stringBundle.getString('selected-no'));
+    labelSelectedValue.setAttribute('class', obj.selected ? 'header' : '');
+    labelSelectedValue.setAttribute('crop', 'end');
+    boxSelected.appendChild(labelSelectedValue);
 
     var inputMute = document.createElement('checkbox');
     inputMute.setAttribute('label', this._stringBundle.getString('mute-label'));
