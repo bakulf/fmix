@@ -6,7 +6,7 @@
   <Description about="urn:mozilla:install-manifest">
     <em:id>id@baku.fmix</em:id>
     <em:name>FMix</em:name>
-    <em:version>0.2</em:version>
+    <em:version>0.3</em:version>
     <em:iconURL>chrome://fmix/skin/logo.png</em:iconURL>
 
     <!-- Firefox -->
