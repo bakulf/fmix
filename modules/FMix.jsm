@@ -39,7 +39,7 @@ Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 XPCOMUtils.defineLazyModuleGetter(this, "Services",
   "resource://gre/modules/Services.jsm");
 
-const DEBUG = true;
+const DEBUG = false;
 function debug(msg) {
   if (DEBUG) {
     dump("** FMix ** Debug: " + msg + "\n");
