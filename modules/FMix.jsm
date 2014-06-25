@@ -39,7 +39,7 @@ Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 XPCOMUtils.defineLazyModuleGetter(this, "Services", 
   "resource://gre/modules/Services.jsm");
 
-const DEBUG = false;
+const DEBUG = true;
 function debug(msg) {
   if (DEBUG) {
     dump("** FMix ** Debug: " + msg + "\n");
@@ -66,7 +66,7 @@ function raiseOrOpenNewMixer() {
 }
 
 const WindowListener = {
-  _loadIntoWindow: function(domWindow) {
+  loadIntoWindow: function(domWindow) {
     debug("loading into window");
 
     // Grab the strings we need.
@@ -155,20 +155,15 @@ const WindowListener = {
 
     // Event listeners for tab open/close
     var container = domWindow.gBrowser.tabContainer;
-    container.addEventListener("TabOpen", function(event) {
-      FMix.tabOpened(domWindow, event.target);
-    }, false);
-
-    container.addEventListener("TabClose", function(event) {
-      FMix.tabClosed(domWindow, event.target);
-    }, false);
+    container.addEventListener("TabOpen", this, false);
+    container.addEventListener("TabClose", this, false);
 
     for (let i = 0; i < domWindow.gBrowser.tabContainer.childNodes.length; ++i) {
       FMix.tabOpened(domWindow, domWindow.gBrowser.tabContainer.childNodes[i]);
     }
   },
 
-  _unloadFromWindow: function(domWindow) {
+  unloadFromWindow: function(domWindow) {
     debug("unloading from window");
 
     // Remove everything we added above.
@@ -191,14 +186,35 @@ const WindowListener = {
       }
     }
 
+    // Event listeners for tab open/close
+    var container = domWindow.gBrowser.tabContainer;
+    container.removeEventListener("TabOpen", this);
+    container.removeEventListener("TabClose", this);
+
+    for (let i = 0; i < domWindow.gBrowser.tabContainer.childNodes.length; ++i) {
+      FMix.tabOpened(domWindow, domWindow.gBrowser.tabContainer.childNodes[i]);
+    }
+
     FMix.windowClosed(domWindow);
+  },
+
+  handleEvent: function(event) {
+    switch (event.type) {
+      case 'TabOpen':
+        FMix.tabOpened(event.target.ownerDocument.defaultView, event.target);
+        break;
+
+      case 'TabClose':
+        FMix.tabClosed(event.target.ownerDocument.defaultView, event.target);
+        break;
+    }
   },
 
   onOpenWindow: function(window) {
     let domWindow = window.QueryInterface(Ci.nsIInterfaceRequestor)
                           .getInterface(Ci.nsIDOMWindow);
 
-    let loadIntoWindow = this._loadIntoWindow.bind(this);
+    let loadIntoWindow = this.loadIntoWindow.bind(this);
     let listener = function() {
       domWindow.removeEventListener("load", listener, false);
 
@@ -225,7 +241,7 @@ const WindowListener = {
       return;
     }
 
-    this._unloadFromWindow(domWindow);
+    this.unloadFromWindow(domWindow);
   },
 
   onWindowTitleChange: function(window, title) {
@@ -245,7 +261,7 @@ const FMix = {
     let windows = Services.wm.getEnumerator(WINDOW_TYPE_BROWSER);
     while (windows.hasMoreElements()) {
       let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-      WindowListener._loadIntoWindow(domWindow);
+      WindowListener.loadIntoWindow(domWindow);
     }
 
     // Register for notification of future window loads.
@@ -280,7 +296,7 @@ const FMix = {
     let windows = Services.wm.getEnumerator(WINDOW_TYPE_BROWSER);
     while (windows.hasMoreElements()) {
       let domWindow = windows.getNext().QueryInterface(Ci.nsIDOMWindow);
-      WindowListener._unloadFromWindow(domWindow);
+      WindowListener.unloadFromWindow(domWindow);
     }
 
     // Close all the browser windows that are currently open.
@@ -305,9 +321,45 @@ const FMix = {
 
   tabOpened: function(window, tab) {
     debug("tab opened");
-    this._tabMap.push({ window: window, tab: tab });
 
-    this._notifyObservers();
+    var browser = window.gBrowser.getBrowserForTab(tab);
+    var obj = { window: window, tab: tab,
+                tabURL: browser.currentURI.spec,
+                tabTitle: browser.contentWindow.document.title };
+
+    var self = this;
+    var listener = {
+      QueryInterface: XPCOMUtils.generateQI(["nsIWebProgressListener",
+                                              "nsISupportsWeakReference"]),
+
+      onStateChange: function(aWebProgress, aRequest, aFlag, aStatus) {
+        if (aFlag & Ci.nsIWebProgressListener.STATE_STOP) {
+          var browser = window.gBrowser.getBrowserForTab(tab);
+
+          if (obj.tabURL != browser.currentURI.spec ||
+              obj.tabTitle != browser.contentWindow.document.title) {
+            obj.tabURL = browser.currentURI.spec;
+            obj.tabTitle = browser.contentWindow.document.title;
+            self.notifyObservers();
+          }
+        }
+      },
+
+      onLocationChange: function(aProgress, aRequest, aURI) { },
+
+      // For definitions of the remaining functions see related documentation
+      onProgressChange: function(aWebProgress, aRequest, curSelf, maxSelf, curTot, maxTot) {},
+      onStatusChange: function(aWebProgress, aRequest, aStatus, aMessage) {},
+      onSecurityChange: function(aWebProgress, aRequest, aState) {}
+    };
+
+    var browser = window.gBrowser.getBrowserForTab(tab);
+    browser.addProgressListener(listener);
+    obj.listener = listener;
+
+    this._tabMap.push(obj);
+
+    this.notifyObservers();
   },
 
   tabClosed: function(window, tab) {
@@ -316,12 +368,13 @@ const FMix = {
     for (var i = 0; i < this._tabMap.length; ++i) {
       if (this._tabMap[i].tab == tab &&
           this._tabMap[i].window == window) {
+        this._removeListener(this._tabMap[i]);
         this._tabMap.splice(i, 1);
         break;
       }
     }
 
-    this._notifyObservers();
+    this.notifyObservers();
   },
 
   windowClosed: function(window) {
@@ -329,12 +382,19 @@ const FMix = {
 
     for (var i = 0; i < this._tabMap.length; ++i) {
       if (this._tabMap[i].window == window) {
+        this._removeListener(this._tabMap[i]);
         this._tabMap.splice(i, 1);
         --i;
       }
     }
 
-    this._notifyObservers();
+    this.notifyObservers();
+  },
+
+  _removeListener: function(obj) {
+    debug("Removing the listener");
+    var browser = obj.window.gBrowser.getBrowserForTab(obj.tab);
+    browser.removeProgressListener(obj.listener);
   },
 
   _checkPreferences: function() {
@@ -383,7 +443,7 @@ const FMix = {
     }
   },
 
-  _notifyObservers: function() {
+  notifyObservers: function() {
     debug('Notify objservers');
     for (var i = 0; i < this._registered.length; ++i) {
       this._registered[i].updates();

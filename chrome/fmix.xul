@@ -24,10 +24,11 @@
           src="chrome://fmix/content/fmix.js"/>
 
   <box>
+    <spacer flex="1" />
     <image src="header.png" />
     <spacer flex="1" />
   </box>
 
-  <vbox id="box-main" flex="1"></vbox>
+  <vbox id="box-main" flex="1" style="overflow:auto"></vbox>
 
 </window>

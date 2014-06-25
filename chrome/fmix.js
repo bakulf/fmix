@@ -43,28 +43,57 @@ const FMixUI = {
     }
 
     var tabs = FMix.getTabs();
+
+    // No tabs, we can close the window.
+    if (tabs.length == 0) {
+      window.close();
+      return;
+    }
+
     for (var i = 0; i < tabs.length; ++i) {
-      this.createTab(tabs[i].window, tabs[i].tab, i);
+      this.createTab(tabs[i].window, tabs[i].tab,
+                     tabs[i].tabURL, tabs[i].tabTitle, i);
     }
   },
 
-  createTab: function(window, tab, index) {
+  createTab: function(window, tab, tabURL, tabTitle, index) {
     debug("createTab");
 
     var browser = window.gBrowser.getBrowserForTab(tab);
     var utils = browser.contentWindow.QueryInterface(Ci.nsIInterfaceRequestor)
                                      .getInterface(Ci.nsIDOMWindowUtils);
 
+    var separator = document.createElement('separator');
+    separator.setAttribute('orient', 'horizontal');
+    separator.setAttribute('class', 'groove');
+    this._box.appendChild(separator);
+
     var groupBox = document.createElement('groupbox');
     groupBox.setAttribute('flex', '0');
     this._box.appendChild(groupBox);
 
     var labelTitle = document.createElement('caption');
-    labelTitle.setAttribute('label', 'Tab: ' + (index + 1) + '- URL: ' + browser.currentURI.spec);
+    labelTitle.setAttribute('label', 'Tab: ' + (index + 1) + ' - ' + tabTitle);
+    labelTitle.setAttribute('crop', 'end');
     groupBox.appendChild(labelTitle);
 
+    var boxURL = document.createElement('box');
+    this._box.appendChild(boxURL);
+
+    var labelURL = document.createElement('label');
+    labelURL.setAttribute('crop', 'end');
+    labelURL.setAttribute('value', 'URL:');
+    boxURL.appendChild(labelURL);
+
+    var labelURLValue = document.createElement('label');
+    labelURLValue.setAttribute('flex', '1');
+    labelURLValue.setAttribute('value', tabURL);
+    labelURLValue.setAttribute('crop', 'end');
+    boxURL.appendChild(labelURLValue);
+
     var inputMute = document.createElement('checkbox');
-    inputMute.setAttribute('label', 'Mute or not this tab');
+    inputMute.setAttribute('label', 'Mute this tab');
+    inputMute.setAttribute('crop', 'end');
     inputMute.setAttribute('checked', utils.audioMuted ? 'true' : 'false');
     groupBox.appendChild(inputMute);
 
@@ -73,6 +102,7 @@ const FMixUI = {
 
     var labelVolume = document.createElement('label');
     labelVolume.setAttribute('value', 'Volume:');
+    labelVolume.setAttribute('crop', 'end');
     boxVolume.appendChild(labelVolume);
 
     var inputVolume = document.createElement('scale');
@@ -93,9 +123,5 @@ const FMixUI = {
       debug("Mute Clicked: " + inputMute.checked);
       utils.audioMuted = inputMute.checked;
     }, true);
-
-    var spacer = document.createElement('spacer');
-    spacer.setAttribute('flex', '1');
-    this._box.appendChild(spacer);
   }
 };
