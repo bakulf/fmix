@@ -31,4 +31,9 @@
 
   <vbox id="box-main" flex="1" style="overflow:auto"></vbox>
 
+  <stringbundleset>
+    <stringbundle id="stringbundle"
+                  src="chrome://fmix/locale/fmix.properties"/>
+  </stringbundleset>
+
 </window>

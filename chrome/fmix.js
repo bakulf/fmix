@@ -19,11 +19,13 @@ function debug(msg) {
 const FMixUI = {
 
   _box: null,
+  _stringBundle: null,
 
   load: function() {
     debug("onload");
 
     this._box = document.getElementById("box-main");
+    this._stringBundle = document.getElementById("stringbundle");
 
     FMix.registerForUpdates(this);
     this.updates();
@@ -52,11 +54,12 @@ const FMixUI = {
 
     for (var i = 0; i < tabs.length; ++i) {
       this.createTab(tabs[i].window, tabs[i].tab,
-                     tabs[i].tabURL, tabs[i].tabTitle, i);
+                     tabs[i].tabURL, tabs[i].tabTitle,
+                     tabs[i].active, i);
     }
   },
 
-  createTab: function(window, tab, tabURL, tabTitle, index) {
+  createTab: function(window, tab, tabURL, tabTitle, active, index) {
     debug("createTab");
 
     var browser = window.gBrowser.getBrowserForTab(tab);
@@ -73,7 +76,8 @@ const FMixUI = {
     this._box.appendChild(groupBox);
 
     var labelTitle = document.createElement('caption');
-    labelTitle.setAttribute('label', 'Tab: ' + (index + 1) + ' - ' + tabTitle);
+    labelTitle.setAttribute('label',
+      this._stringBundle.getFormattedString('tab-title', [(index + 1), tabTitle]));
     labelTitle.setAttribute('crop', 'end');
     groupBox.appendChild(labelTitle);
 
@@ -82,7 +86,7 @@ const FMixUI = {
 
     var labelURL = document.createElement('label');
     labelURL.setAttribute('crop', 'end');
-    labelURL.setAttribute('value', 'URL:');
+    labelURL.setAttribute('value', this._stringBundle.getString('url-label'));
     boxURL.appendChild(labelURL);
 
     var labelURLValue = document.createElement('label');
@@ -91,17 +95,36 @@ const FMixUI = {
     labelURLValue.setAttribute('crop', 'end');
     boxURL.appendChild(labelURLValue);
 
+    var boxAudio = document.createElement('box');
+    this._box.appendChild(boxAudio);
+
+    var labelAudio = document.createElement('label');
+    labelAudio.setAttribute('crop', 'end');
+    labelAudio.setAttribute('value', this._stringBundle.getString('audio-label'));
+    boxAudio.appendChild(labelAudio);
+
+    var labelAudioValue = document.createElement('label');
+    labelAudioValue.setAttribute('flex', '1');
+    labelAudioValue.setAttribute('value', active ?
+      this._stringBundle.getString('audio-active') :
+      this._stringBundle.getString('audio-inactive'));
+    labelAudioValue.setAttribute('class', active ? 'header' : '');
+    labelAudioValue.setAttribute('crop', 'end');
+    boxAudio.appendChild(labelAudioValue);
+
     var inputMute = document.createElement('checkbox');
-    inputMute.setAttribute('label', 'Mute this tab');
+    inputMute.setAttribute('label', this._stringBundle.getString('mute-label'));
     inputMute.setAttribute('crop', 'end');
-    inputMute.setAttribute('checked', utils.audioMuted ? 'true' : 'false');
+    inputMute.setAttribute('checked', utils.audioMuted ?
+      this._stringBundle.getString('audio-active') :
+      this._stringBundle.getString('audio-inactive'));
     groupBox.appendChild(inputMute);
 
     var boxVolume = document.createElement('box');
     this._box.appendChild(boxVolume);
 
     var labelVolume = document.createElement('label');
-    labelVolume.setAttribute('value', 'Volume:');
+    labelVolume.setAttribute('value', this._stringBundle.getString('volume-label'));
     labelVolume.setAttribute('crop', 'end');
     boxVolume.appendChild(labelVolume);
 
@@ -109,7 +132,7 @@ const FMixUI = {
     inputVolume.setAttribute('flex', '1');
     inputVolume.setAttribute('min', '0');
     inputVolume.setAttribute('max', '100');
-    inputVolume.setAttribute('label', 'Volume controller for this tab');
+    inputVolume.setAttribute('label', this._stringBundle.getString('scale-label'));
     inputVolume.setAttribute('value', utils.audioVolume * 100);
     boxVolume.appendChild(inputVolume);
 

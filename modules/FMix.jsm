@@ -36,7 +36,7 @@ const WINDOW_TYPE_FMIX = "FMix:Window";
 
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 
-XPCOMUtils.defineLazyModuleGetter(this, "Services", 
+XPCOMUtils.defineLazyModuleGetter(this, "Services",
   "resource://gre/modules/Services.jsm");
 
 const DEBUG = true;
@@ -249,6 +249,16 @@ const WindowListener = {
   }
 };
 
+const MediaObserver = {
+  observe: function(subject, topic, data) {
+   if (topic != 'media-playback') {
+     return;
+   }
+
+   FMix.windowActive(subject, data);
+  }
+};
+
 const FMix = {
   _unregisterComponentFunctions: [],
 
@@ -256,6 +266,12 @@ const FMix = {
     debug("startup");
 
     this._checkPreferences();
+
+    // Observer
+    let observerService = Cc["@mozilla.org/observer-service;1"]
+                            .getService(Ci.nsIObserverService);
+    observerService.addObserver(MediaObserver, "media-playback", false);
+
 
     // Enumerate all currently open browser windows and add menu items.
     let windows = Services.wm.getEnumerator(WINDOW_TYPE_BROWSER);
@@ -288,6 +304,11 @@ const FMix = {
 
   shutdown: function() {
     debug("shutdown");
+
+    // Observer
+    let observerService = Cc["@mozilla.org/observer-service;1"]
+                            .getService(Ci.nsIObserverService);
+    observerService.removeObserver(MediaObserver, "media-playback", false);
 
     // No longer need to know about new windows.
     Services.wm.removeListener(WindowListener);
@@ -325,7 +346,8 @@ const FMix = {
     var browser = window.gBrowser.getBrowserForTab(tab);
     var obj = { window: window, tab: tab,
                 tabURL: browser.currentURI.spec,
-                tabTitle: browser.contentWindow.document.title };
+                tabTitle: browser.contentWindow.document.title,
+                active: false };
 
     var self = this;
     var listener = {
@@ -385,6 +407,19 @@ const FMix = {
         this._removeListener(this._tabMap[i]);
         this._tabMap.splice(i, 1);
         --i;
+      }
+    }
+
+    this.notifyObservers();
+  },
+
+  windowActive: function(window, status) {
+    debug("window active");
+
+    for (var i = 0; i < this._tabMap.length; ++i) {
+      var browser = this._tabMap[i].window.gBrowser.getBrowserForTab(this._tabMap[i].tab);
+      if (browser.contentWindow == window) {
+        this._tabMap[i].active = (status == 'active');
       }
     }
 
